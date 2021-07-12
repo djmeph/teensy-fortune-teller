@@ -9,7 +9,7 @@ uint8_t led = 13; // Built-in LED
 const char configFileName[13] = "CONFJSON.TXT";
 
 // GUItool: begin automatically generated code
-AudioPlaySdWav           playWav;     //xy=864,427
+AudioPlaySdWav           playWav;        //xy=864,427
 AudioAmplifier           amp0;           //xy=1081,400
 AudioAmplifier           amp1;           //xy=1084,440
 AudioOutputAnalog        dac;            //xy=1313,421
@@ -49,9 +49,9 @@ void loop() {
   const char* selectPitch = variant;
 
   /**
-   * If I pass `selectPitch` directly to playFile() the name of the file prints (line 65)
-   * And returns true that the file exists (line 66), but the AudioPlaySdWav object will
-   * not play it (line 67). If I make a copy of the char array and pass the copy to
+   * If I pass `selectPitch` directly to playFile() the name of the file prints (line 66)
+   * And returns true that the file exists (line 67), but the AudioPlaySdWav object will
+   * not play it (line 68). If I make a copy of the char array and pass the copy to
    * playFile(), everything works. Feels like I'm doing something wrong here.
    */
 
