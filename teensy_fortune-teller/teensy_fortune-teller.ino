@@ -49,10 +49,10 @@ void loop() {
   const char* selectPitch = variant;
   const int pitchLength = strlen(selectPitch);
 
-  // If I pass `selectPitch` directly to playFile() the name of the file prints (line 62)
-  // And returns true that the file exists, but the AudioPlaySdWav object will not play
-  // it. If I make a copy of the array and pass the copy, everything works. Feels like I'm
-  // Doing something wrong here.
+  // If I pass `selectPitch` directly to playFile() the name of the file prints (line 65)
+  // And returns true that the file exists (line 66), but the AudioPlaySdWav object will
+  // not play it (line 67). If I make a copy of the char array and pass the copy to
+  // playFile(), everything works. Feels like I'm doing something wrong here.
 
   char selectionCopy[pitchLength] = {};
   strcpy(selectionCopy, selectPitch);
