@@ -47,14 +47,15 @@ void loop() {
 
   const JsonVariantConst variant = config["pitch"][0];
   const char* selectPitch = variant;
-  const int pitchLength = strlen(selectPitch);
 
-  // If I pass `selectPitch` directly to playFile() the name of the file prints (line 65)
-  // And returns true that the file exists (line 66), but the AudioPlaySdWav object will
-  // not play it (line 67). If I make a copy of the char array and pass the copy to
-  // playFile(), everything works. Feels like I'm doing something wrong here.
+  /**
+   * If I pass `selectPitch` directly to playFile() the name of the file prints (line 65)
+   * And returns true that the file exists (line 66), but the AudioPlaySdWav object will
+   * not play it (line 67). If I make a copy of the char array and pass the copy to
+   * playFile(), everything works. Feels like I'm doing something wrong here.
+   */
 
-  char selectionCopy[pitchLength] = {};
+  char selectionCopy[strlen(selectPitch)] = {};
   strcpy(selectionCopy, selectPitch);
 
   playFile(selectionCopy);
