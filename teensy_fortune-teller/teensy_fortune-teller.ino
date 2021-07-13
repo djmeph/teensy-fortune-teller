@@ -40,10 +40,16 @@ void setup() {
 
 void loop() {
   readConfig();
-  Serial.printf("Size of pitches array: %u\n", config["pitch"].size());
-  Serial.printf("Size of insertCoin array: %u\n", config["insertCoin"].size());
-  Serial.printf("Size of pressButton array: %u\n", config["pressButton"].size());
-  Serial.printf("Size of outOfCards array: %u\n", config["outOfCards"].size());\
+
+  uint8_t pitchCount = config["pitch"].size();
+  uint8_t insertCoinCount = config["insertCoin"].size();
+  uint8_t pressButtonCount = config["pressButton"].size();
+  uint8_t outOfCardsCount = config["outOfCards"].size();
+
+  Serial.printf("Size of pitches array: %u\n", pitchCount);
+  Serial.printf("Size of insertCoin array: %u\n", insertCoinCount);
+  Serial.printf("Size of pressButton array: %u\n", pressButtonCount);
+  Serial.printf("Size of outOfCards array: %u\n", outOfCardsCount);
 
   const JsonVariantConst variant = config["pitch"][0];
   const char* selectPitch = variant;
