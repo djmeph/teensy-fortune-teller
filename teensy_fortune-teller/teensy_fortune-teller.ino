@@ -7,6 +7,7 @@
 
 uint8_t led = 13; // Built-in LED
 const char configFileName[13] = "CONFJSON.TXT";
+static char jsonDoc[1024] = {};
 
 // GUItool: begin automatically generated code
 AudioPlaySdWav           playWav;        //xy=864,427
@@ -18,8 +19,6 @@ AudioConnection          patchCord2(playWav, 1, amp1, 0);
 AudioConnection          patchCord3(amp0, 0, dac, 0);
 AudioConnection          patchCord4(amp1, 0, dac, 1);
 // GUItool: end automatically generated code
-
-StaticJsonDocument<128> config;
 
 void setup() {
   Serial.begin(9600);
@@ -36,10 +35,40 @@ void setup() {
     return;
   }
   Serial.println("initialization done.");
+
+  if (SD.exists(configFileName)) {
+    File file = SD.open(configFileName);
+
+    if (file) {
+      uint8_t jsonLen = file.size();
+
+      Serial.printf("Reading %s:\n", configFileName);
+
+      for (uint8_t i = 0; i < jsonLen; i++) jsonDoc[i] = file.read();
+      file.close();
+
+      for (uint8_t i = 0; i < jsonLen; i++) Serial.write((char)jsonDoc[i]);
+      Serial.println("");
+
+
+    } else {
+      Serial.printf("error opening %s\n", configFileName);
+    }
+  } else {
+    Serial.printf("file %s doesn't exist\n", configFileName);
+  }
 }
 
 void loop() {
-  readConfig();
+  StaticJsonDocument<1024> config;
+  DeserializationError error = deserializeJson(config, jsonDoc);
+
+  if (error) {
+    Serial.print(F("deserializeJson() failed: "));
+    Serial.println(error.f_str());
+    delay(5000);
+    return;
+  }
 
   uint8_t pitchCount = config["pitch"].size();
   uint8_t insertCoinCount = config["insertCoin"].size();
@@ -51,7 +80,7 @@ void loop() {
   Serial.printf("Size of pressButton array: %u\n", pressButtonCount);
   Serial.printf("Size of outOfCards array: %u\n", outOfCardsCount);
 
-  const JsonVariantConst variant = config["pitch"][0];
+  JsonVariantConst variant = config["pitch"][0];
   const char* selectPitch = variant;
 
   /**
@@ -82,45 +111,6 @@ void playFile(char *filename) {
     Serial.printf("Error: File (%s) not found ...\n", filename);
     errorBlink();
     delay(1000);
-  }
-}
-
-void readConfig() {
-  /**
-   * When I put the contents of this function under setup() I can read the configuration
-   * once on the first loop, but on subsequent loops the same values read as [null]. When
-   * I moved it to this function, and call it on the first line of loop() it reads and
-   * parses the JSON file every loop, but it works. Wondering if there's a way to move
-   * this back to setup() and preserve the contents of the `config` JsonDocument in
-   * memory so I don't have to do this.
-   */
-
-  if (SD.exists(configFileName)) {
-    File file = SD.open(configFileName);
-
-    if (file) {
-      Serial.printf("Reading %s:\n", configFileName);
-
-      uint8_t jsonLen = file.size();
-      char json[jsonLen];
-
-      for (uint8_t i = 0; i < jsonLen; i++) json[i] = file.read();
-      file.close();
-
-      for (uint8_t i = 0; i < jsonLen; i++) Serial.write((char)json[i]);
-      Serial.println("");
-
-      DeserializationError error = deserializeJson(config, json);
-
-      if (error) {
-        Serial.print(F("deserializeJson() failed: "));
-        Serial.println(error.f_str());
-      }
-    } else {
-      Serial.printf("error opening %s\n", configFileName);
-    }
-  } else {
-    Serial.printf("file %s doesn't exist\n", configFileName);
   }
 }
 
