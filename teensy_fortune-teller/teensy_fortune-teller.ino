@@ -49,8 +49,6 @@ void setup() {
 
       for (uint8_t i = 0; i < jsonLen; i++) Serial.write((char)jsonDoc[i]);
       Serial.println("");
-
-
     } else {
       Serial.printf("error opening %s\n", configFileName);
     }
