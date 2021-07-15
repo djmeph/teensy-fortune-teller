@@ -3,7 +3,6 @@
 #include <play.h>
 
 uint8_t led = 13; // Built-in LED
-const char configFileName[13] = "CONFJSON.TXT";
 
 void setup() {
   Serial.begin(9600);
@@ -23,7 +22,7 @@ void setup() {
 }
 
 void loop() {
-  StaticJsonDocument<128> config = readConfig(configFileName);
+  StaticJsonDocument<128> config = readConfig();
 
   uint8_t pitchCount = config["pitch"].size();
   uint8_t insertCoinCount = config["insertCoin"].size();

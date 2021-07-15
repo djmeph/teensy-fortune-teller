@@ -3,7 +3,9 @@
 #include <SerialFlash.h>
 #include <ArduinoJson.h>
 
-StaticJsonDocument<128> readConfig(const char configFileName[]) {
+const char configFileName[13] = "CONFJSON.TXT";
+
+StaticJsonDocument<128> readConfig() {
   /**
    * When I put the contents of this function under setup() I can read the configuration
    * once on the first loop, but on subsequent loops the same values read as [null]. When
