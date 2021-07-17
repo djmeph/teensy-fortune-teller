@@ -2,17 +2,23 @@
 
 void pitch() {
   if (stage != PITCH) return;
-  if (distance <= 400 && !playWav.isPlaying()) {
-    Serial.printf("Size of pitches array: %u\n", pitchCount);
-    uint32_t randomNumber = Entropy.random(0, (pitchCount - 1));
-    Serial.printf("Random pitch index: %u\n", randomNumber);
-    // const JsonVariantConst variant = config["pitch"][randomNumber];
+  if (distance <= 10 && !playWav.isPlaying()) {
+    StaticJsonDocument<512> config;
+    char jsonCopy[jsonLen + 1];
+    for (uint8_t i = 0; i < jsonLen; i++) jsonCopy[i] = json[i];
+    DeserializationError error = deserializeJson(config, jsonCopy);
+
+    if (error) {
+      Serial.print(F("deserializeJson() failed: "));
+      Serial.println(error.f_str());
+    }
+
+    uint8_t pitchCount = config["pitch"].size();
+    uint32_t randomNumber = Entropy.random(0, pitchCount);
     const char* selectPitch = config["pitch"][randomNumber];
-    Serial.printf("Pitch selected: %s\n", selectPitch);
-    // char selectionCopy[strlen(selectPitch)] = {};
-    // strcpy(selectionCopy, selectPitch);
-    // Serial.printf("Pitch selected: %s\n", selectionCopy);
-    // play(selectionCopy);
+    char selectionCopy[strlen(selectPitch) + 1] = {};
+    strcpy(selectionCopy, selectPitch);
+    play(selectionCopy);
   }
 }
 
@@ -76,7 +82,7 @@ void setup() {
   pinMode(trigPin, OUTPUT); // Sets the trigPin as an OUTPUT
   pinMode(echoPin, INPUT); // Sets the echoPin as an INPUT
 
-  AudioMemory(256);
+  AudioMemory(512);
   amp0.gain(1);
   amp1.gain(1);
 
@@ -92,7 +98,7 @@ void setup() {
     return;
   }
 
-  config = readConfig();
+  readConfig();
 
   userDistanceTask.enable();
   monitorTask.enable();
@@ -103,34 +109,4 @@ void setup() {
 
 void loop() {
   scheduler.execute();
-}
-
-void foo () {
-  StaticJsonDocument<256> config = readConfig();
-
-  uint8_t pitchCount = config["pitch"].size();
-  uint8_t insertCoinCount = config["insertCoin"].size();
-  uint8_t pressButtonCount = config["pressButton"].size();
-  uint8_t outOfCardsCount = config["outOfCards"].size();
-
-  Serial.printf("Size of pitches array: %u\n", pitchCount);
-  Serial.printf("Size of insertCoin array: %u\n", insertCoinCount);
-  Serial.printf("Size of pressButton array: %u\n", pressButtonCount);
-  Serial.printf("Size of outOfCards array: %u\n", outOfCardsCount);
-
-  const JsonVariantConst variant = config["pitch"][0];
-  const char* selectPitch = variant;
-
-  /**
-   * If I pass `selectPitch` directly to play() the name of the file prints (line 66)
-   * And returns true that the file exists (line 67), but the AudioPlaySdWav object will
-   * not play it (line 68). If I make a copy of the char array and pass the copy to
-   * play(), everything works. Feels like I'm doing something wrong here.
-   */
-
-  char selectionCopy[strlen(selectPitch)] = {};
-  strcpy(selectionCopy, selectPitch);
-
-  play(selectionCopy);
-  delay(5000);
 }
