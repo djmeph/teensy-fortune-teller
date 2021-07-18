@@ -13,16 +13,20 @@ void pitch() {
       Serial.println(error.f_str());
     }
 
-    uint8_t pitchCount = config["pitch"].size();
-    uint32_t randomNumber = Entropy.random(0, pitchCount);
-    const char* selectPitch = config["pitch"][randomNumber];
-    char selectionCopy[strlen(selectPitch) + 1] = {};
-    strcpy(selectionCopy, selectPitch);
-    play(selectionCopy);
+    uint32_t randomNumber = Entropy.random(0, config["pitch"].size());
+    play(config["pitch"][randomNumber]);
   }
 }
 
-void play(char filename[]) {
+void cta() {
+  if (stage != CTA) return;
+}
+
+void dispense() {
+  if (stage != DISPENSE) return;
+}
+
+void play(char* filename) {
   Serial.printf("Playing file: %s\n", filename);
   if (SD.exists(filename)) {
     playWav.play(filename);
@@ -83,12 +87,14 @@ void setup() {
   pinMode(echoPin, INPUT); // Sets the echoPin as an INPUT
 
   AudioMemory(512);
-  amp0.gain(1);
+  amp0.gain(0.7);
   amp1.gain(1);
 
   scheduler.addTask(userDistanceTask);
   scheduler.addTask(monitorTask);
   scheduler.addTask(pitchTask);
+  scheduler.addTask(ctaTask);
+  scheduler.addTask(dispenseTask);
 
   Entropy.Initialize();
 
@@ -103,6 +109,9 @@ void setup() {
   userDistanceTask.enable();
   monitorTask.enable();
   pitchTask.enable();
+  ctaTask.enable();
+  dispenseTask.enable();
+
 
   Serial.println("Setup complete");
 }

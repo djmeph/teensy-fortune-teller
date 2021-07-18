@@ -15,6 +15,8 @@
 void userDistance();
 void monitor();
 void pitch();
+void cta();
+void dispense();
 void errorBlink();
 void play(char filename[]);
 void stop();
@@ -30,6 +32,8 @@ Scheduler scheduler;
 Task userDistanceTask(10, TASK_FOREVER, &userDistance);
 Task monitorTask(500, TASK_FOREVER, &monitor);
 Task pitchTask(100, TASK_FOREVER, &pitch);
+Task ctaTask(100, TASK_FOREVER, &cta);
+Task dispenseTask(100, TASK_FOREVER, &dispense);
 Stage stage;
 
 // GUItool: begin automatically generated code
@@ -37,7 +41,9 @@ AudioPlaySdWav           playWav;        //xy=864,427
 AudioAmplifier           amp0;           //xy=1081,400
 AudioAmplifier           amp1;           //xy=1084,440
 // AudioOutputAnalog        dac;            //xy=1313,421
-AudioOutputMQS           dac;           //xy=1258,427
+// AudioOutputMQS           dac;           //xy=1258,427
+// AudioOutputI2S           dac;           //xy=1267,419
+AudioOutputPT8211        dac;       //xy=1285,416
 AudioConnection          patchCord1(playWav, 0, amp0, 0);
 AudioConnection          patchCord2(playWav, 1, amp1, 0);
 AudioConnection          patchCord3(amp0, 0, dac, 0);
