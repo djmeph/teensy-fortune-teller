@@ -2,7 +2,7 @@
 
 void pitch() {
   if (stage != PITCH) return;
-  if (distance <= 10 && !playWav.isPlaying()) {
+  if (distance <= maxDistance && !playWav.isPlaying()) {
     StaticJsonDocument<512> config;
     char jsonCopy[jsonLen + 1];
     for (uint8_t i = 0; i < jsonLen; i++) jsonCopy[i] = json[i];
@@ -83,12 +83,12 @@ void setup() {
   while (!Serial) continue;
 
   pinMode(led, OUTPUT);
-  pinMode(trigPin, OUTPUT); // Sets the trigPin as an OUTPUT
-  pinMode(echoPin, INPUT); // Sets the echoPin as an INPUT
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
 
   AudioMemory(512);
-  amp0.gain(0.7);
-  amp1.gain(1);
+  amp0.gain(amp0gain);
+  amp1.gain(amp1gain);
 
   scheduler.addTask(userDistanceTask);
   scheduler.addTask(monitorTask);

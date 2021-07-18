@@ -23,8 +23,11 @@ void stop();
 
 static long duration; // variable for the duration of sound wave travel
 static int distance; // variable for the distance measurement
-static char json[512];
-static uint8_t jsonLen;
+static uint8_t maxDistance = 10; // TODO: Move these values to JSON
+static float amp0gain = 0.7; // TODO: Move these values to JSON
+static float amp1gain = 1; // TODO: Move these values to JSON
+static char json[512]; // Holds JSON string from SD card
+static uint8_t jsonLen; // Length of JSON string
 
 enum Stage { PITCH, CTA, DISPENSE };
 
