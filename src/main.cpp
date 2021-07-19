@@ -3,18 +3,12 @@
 void pitch() {
   if (stage != PITCH) return;
   if (distance <= maxDistance && !playWav.isPlaying()) {
-    StaticJsonDocument<512> config;
-    char jsonCopy[jsonLen + 1];
-    for (uint8_t i = 0; i < jsonLen; i++) jsonCopy[i] = json[i];
-    DeserializationError error = deserializeJson(config, jsonCopy);
-
-    if (error) {
-      Serial.print(F("deserializeJson() failed: "));
-      Serial.println(error.f_str());
-    }
-
+    StaticJsonDocument<512> config = deserializeJson();
     uint32_t randomNumber = Entropy.random(0, config["pitch"].size());
-    play(config["pitch"][randomNumber]);
+    char* selectPitch = config["pitch"][randomNumber];
+    char pitchCopy[strlen(selectPitch) + 1] = {};
+    strcpy(pitchCopy, selectPitch);
+    play(pitchCopy);
   }
 }
 

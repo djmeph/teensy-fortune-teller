@@ -74,3 +74,16 @@ void readConfig() {
     Serial.printf("file %s doesn't exist\n", configFileName);
   }
 }
+
+StaticJsonDocument<512> deserializeJson() {
+  StaticJsonDocument<512> config;
+  char jsonCopy[jsonLen + 1];
+  for (uint8_t i = 0; i < jsonLen; i++) jsonCopy[i] = json[i];
+  DeserializationError error = deserializeJson(config, jsonCopy);
+
+  if (error) {
+    Serial.print(F("deserializeJson() failed: "));
+    Serial.println(error.f_str());
+  }
+  return config;
+}
