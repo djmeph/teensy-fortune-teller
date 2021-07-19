@@ -100,12 +100,21 @@ void setup() {
 
   readConfig();
 
+  StaticJsonDocument<512> config = deserializeJson();
+
+  maxDistance = config["maxDistance"].as<uint8_t>();
+  amp0gain = config["animatronicsGain"].as<float>();
+  amp1gain = config["speakerGain"].as<float>();
+
+  Serial.printf("Max user distance before pitch starts: %ucm \n", maxDistance);
+  Serial.printf("Animatronics Gain: %0.2f\n", amp0gain);
+  Serial.printf("Speaker Gain: %0.2f\n", amp1gain);
+
   userDistanceTask.enable();
   monitorTask.enable();
   pitchTask.enable();
   ctaTask.enable();
   dispenseTask.enable();
-
 
   Serial.println("Setup complete");
 }
