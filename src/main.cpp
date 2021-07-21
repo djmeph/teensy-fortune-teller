@@ -1,8 +1,12 @@
 #include <config.h>
 
 void pitch() {
-  if (stage != PITCH) return;
-  if (distance <= maxDistance && !playWav.isPlaying()) {
+  if (persistent.unusedCents >= centsToPlay) {
+    persistent.unusedCents -= centsToPlay;
+    EEPROM_writeAnything(0, persistent);
+    stop();
+    stage = CTA;
+  } else if (distance <= maxDistance && !playWav.isPlaying()) {
     StaticJsonDocument<512> config = deserializeJson();
     int randomNumber = Entropy.random(0, config["pitch"].size());
     char* selectPitch = config["pitch"][randomNumber];
@@ -13,12 +17,10 @@ void pitch() {
 }
 
 void cta() {
-  if (stage != CTA) return;
   Serial.println("CTA Stage");
 }
 
 void dispense() {
-  if (stage != DISPENSE) return;
   Serial.println("DISPENSE Stage");
 }
 
