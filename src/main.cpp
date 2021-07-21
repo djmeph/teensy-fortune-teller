@@ -4,7 +4,7 @@ void pitch() {
   if (stage != PITCH) return;
   if (distance <= maxDistance && !playWav.isPlaying()) {
     StaticJsonDocument<512> config = deserializeJson();
-    uint32_t randomNumber = Entropy.random(0, config["pitch"].size());
+    int randomNumber = Entropy.random(0, config["pitch"].size());
     char* selectPitch = config["pitch"][randomNumber];
     char pitchCopy[strlen(selectPitch) + 1] = {};
     strcpy(pitchCopy, selectPitch);
@@ -14,10 +14,12 @@ void pitch() {
 
 void cta() {
   if (stage != CTA) return;
+  Serial.println("CTA Stage");
 }
 
 void dispense() {
   if (stage != DISPENSE) return;
+  Serial.println("DISPENSE Stage");
 }
 
 void play(char* filename) {
@@ -47,8 +49,35 @@ void userDistance() {
   distance = duration * 0.034 / 2;
 }
 
+void coinCounter() {
+  switch (coin) {
+    case START_DROP:
+      if (millis() - nowInterrupt <= 200) {
+        coin = COUNTING_DROP;
+      }
+      break;
+    case COUNTING_DROP:
+      if (millis() - nowInterrupt > 200) {
+        Serial.printf("Total cents inserted: %u\n", centsCounter);
+        persistent.unusedCents += centsCounter;
+        persistent.centsTotal += centsCounter;
+        EEPROM_writeAnything(0, persistent);
+        Serial.printf(
+          "Total $%0.2f\t Unused: $%0.2f\n",
+          ((float)persistent.centsTotal / 100),
+          ((float)persistent.unusedCents / 100)
+        );
+        coin = END_DROP;
+      }
+      break;
+    case END_DROP:
+      if (centsCounter > 0) coin = START_DROP;
+      break;
+  }
+}
+
 void monitor() {
-  Serial.printf("Distance: %d cm\n", distance);
+  // Serial.printf("Distance: %d cm\n", distance);
   if (playWav.isPlaying()) {
     Serial.printf("Elapsed milliseconds: %d\n", playWav.positionMillis());
   }
@@ -74,6 +103,7 @@ void errorBlink() {
 
 void setup() {
   Serial.begin(9600);
+  attachInterrupt(digitalPinToInterrupt(coinPin), coinInterrupt, RISING);
   while (!Serial) continue;
 
   pinMode(led, OUTPUT);
@@ -85,10 +115,9 @@ void setup() {
   amp1.gain(amp1gain);
 
   scheduler.addTask(userDistanceTask);
+  scheduler.addTask(coinCounterTask);
   scheduler.addTask(monitorTask);
-  scheduler.addTask(pitchTask);
-  scheduler.addTask(ctaTask);
-  scheduler.addTask(dispenseTask);
+  scheduler.addTask(stageRouterTask);
 
   Entropy.Initialize();
 
@@ -102,19 +131,31 @@ void setup() {
 
   StaticJsonDocument<512> config = deserializeJson();
 
-  maxDistance = config["maxDistance"].as<uint8_t>();
+  maxDistance = config["maxDistance"].as<int>();
   amp0gain = config["animatronicsGain"].as<float>();
   amp1gain = config["speakerGain"].as<float>();
+  centsToPlay = config["centsToPlay"].as<int>();
+  int clearMemory = config["clearMemory"].as<boolean>();
+
+  if (clearMemory) clearMemoryTask();
 
   Serial.printf("Max user distance before pitch starts: %ucm \n", maxDistance);
   Serial.printf("Animatronics Gain: %0.2f\n", amp0gain);
   Serial.printf("Speaker Gain: %0.2f\n", amp1gain);
+  Serial.printf("Cost to play: $%0.2f\n", centsToPlay / 100);
+
+  EEPROM_readAnything(0, persistent);
+
+  Serial.printf(
+    "Total $%0.2f\t Unused: $%0.2f\n",
+    ((float)persistent.centsTotal / 100),
+    ((float)persistent.unusedCents / 100)
+  );
 
   userDistanceTask.enable();
+  coinCounterTask.enable();
   monitorTask.enable();
-  pitchTask.enable();
-  ctaTask.enable();
-  dispenseTask.enable();
+  stageRouterTask.enable();
 
   Serial.println("Setup complete");
 }

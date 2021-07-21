@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <Wire.h>
 #include <SPI.h>
 #include <SD.h>
@@ -6,6 +7,7 @@
 #include <Audio.h>
 #include <TaskScheduler.h>
 #include <Entropy.h>
+#include <EEPROMAnything.h>
 
 #define echoPin 41
 #define trigPin 40
@@ -20,24 +22,40 @@ void dispense();
 void errorBlink();
 void play(char filename[]);
 void stop();
+void coinInterrupt();
+void coinCounter();
+void readMemory();
+void stageRouter();
+void clearMemoryTask();
 
+static const int coinPin = 2;
 static long duration; // variable for the duration of sound wave travel
 static int distance; // variable for the distance measurement
-static uint8_t maxDistance = 10; // TODO: Move these values to JSON
-static float amp0gain = 0.7; // TODO: Move these values to JSON
-static float amp1gain = 1; // TODO: Move these values to JSON
+static int maxDistance; // Max distance until pitch trigger
+static float amp0gain; // Animitronics input gain
+static float amp1gain; // Speaker output gain
 static char json[512]; // Holds JSON string from SD card
-static uint8_t jsonLen; // Length of JSON string
+static int jsonLen; // Length of JSON string
+static unsigned long nowInterrupt = millis(); // Last time we got an interrupt in ms
+static int centsCounter = 0; // Individual coin cent counter
+// static int nowCoinCounter = millis(); // Current time inside coinCounter
+static int centsToPlay; // Number of cents required to get one fortune
 
 enum Stage { PITCH, CTA, DISPENSE };
+enum Coin { START_DROP, COUNTING_DROP, END_DROP };
+
+struct config_t {
+  long centsTotal = 0; // Total cents added to this machine since entropy
+  int unusedCents = 0; // Number of unused cents paid
+} persistent;
 
 Scheduler scheduler;
 Task userDistanceTask(10, TASK_FOREVER, &userDistance);
+Task coinCounterTask(10, TASK_FOREVER, &coinCounter);
 Task monitorTask(500, TASK_FOREVER, &monitor);
-Task pitchTask(100, TASK_FOREVER, &pitch);
-Task ctaTask(100, TASK_FOREVER, &cta);
-Task dispenseTask(100, TASK_FOREVER, &dispense);
-Stage stage;
+Task stageRouterTask(100, TASK_FOREVER, &stageRouter);
+Stage stage = PITCH;
+Coin coin = END_DROP;
 
 // GUItool: begin automatically generated code
 AudioPlaySdWav           playWav;        //xy=864,427
@@ -62,10 +80,10 @@ void readConfig() {
 
       jsonLen = file.size();
 
-      for (uint8_t i = 0; i < jsonLen; i++) json[i] = file.read();
+      for (int i = 0; i < jsonLen; i++) json[i] = file.read();
       file.close();
 
-      for (uint8_t i = 0; i < jsonLen; i++) Serial.write((char)json[i]);
+      for (int i = 0; i < jsonLen; i++) Serial.write((char)json[i]);
       Serial.println("");
     } else {
       Serial.printf("error opening %s\n", configFileName);
@@ -78,12 +96,42 @@ void readConfig() {
 StaticJsonDocument<512> deserializeJson() {
   StaticJsonDocument<512> config;
   char jsonCopy[jsonLen + 1];
-  for (uint8_t i = 0; i < jsonLen; i++) jsonCopy[i] = json[i];
+  for (int i = 0; i < jsonLen; i++) jsonCopy[i] = json[i];
   DeserializationError error = deserializeJson(config, jsonCopy);
 
   if (error) {
-    Serial.print(F("deserializeJson() failed: "));
-    Serial.println(error.f_str());
+    Serial.printf("deserializeJson() failed: %s\n", error.f_str());
   }
   return config;
+}
+
+void coinInterrupt() {
+  const unsigned long elapsed = millis() - nowInterrupt;
+  nowInterrupt = millis();
+  if (elapsed > 200) {
+    centsCounter = 1;
+    Serial.printf("Time elapsed: %u\tPulses counted: %u\n", elapsed, centsCounter);
+  } else if (elapsed > 50) {
+    centsCounter++;
+    Serial.printf("Time elapsed: %u\tPulses counted: %u\n", elapsed, centsCounter);
+  }
+}
+
+void stageRouter() {
+  switch (stage) {
+    case PITCH:
+      pitch();
+      break;
+    case CTA:
+      cta();
+      break;
+    case DISPENSE:
+      dispense();
+      break;
+  }
+}
+
+void clearMemoryTask() {
+  EEPROM_writeAnything(0, persistent);
+  // Write something here to change the JSON clearMemory = false and save
 }
