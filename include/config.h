@@ -38,7 +38,6 @@ static char json[512]; // Holds JSON string from SD card
 static int jsonLen; // Length of JSON string
 static unsigned long nowInterrupt = millis(); // Last time we got an interrupt in ms
 static int centsCounter = 0; // Individual coin cent counter
-// static int nowCoinCounter = millis(); // Current time inside coinCounter
 static int centsToPlay; // Number of cents required to get one fortune
 
 enum Stage { PITCH, CTA, DISPENSE };
