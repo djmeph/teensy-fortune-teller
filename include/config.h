@@ -29,6 +29,7 @@ static int centsToPlay; // Number of cents required to get one fortune
 static bool buttonState = false;
 static bool buttonPress = false;
 static unsigned long buttonReadTime = millis();
+static long dispenseTimer = millis();
 
 void userDistance();
 void monitor();
@@ -49,6 +50,7 @@ void readButton();
 enum Stage { PITCH, CTA, DISPENSE };
 enum Coin { START_DROP, COUNTING_DROP, END_DROP };
 enum CtaState { CTA_INACTIVE, CTA_PLAY_SCRIPT, CTA_LED_ON, CTA_WAIT_FOR_BUTTON };
+enum DispenseState { DISPENSE_INACTIVE, DISPENSE_PLAY_SCRIPT, DISPENSE_CARD, DISPENSE_PAUSE };
 
 struct config_t {
   long centsTotal = 0; // Total cents added to this machine since entropy
@@ -62,6 +64,7 @@ Task stageRouterTask(100, TASK_FOREVER, &stageRouter);
 Stage stage = PITCH;
 Coin coin = END_DROP;
 CtaState ctaState = CTA_INACTIVE;
+DispenseState dispenseState = DISPENSE_INACTIVE;
 
 // GUItool: begin automatically generated code
 AudioPlaySdWav           playWav;        //xy=864,427

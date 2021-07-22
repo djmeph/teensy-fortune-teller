@@ -38,6 +38,8 @@ void cta() {
     case CTA_WAIT_FOR_BUTTON:
       if (buttonPress) {
         digitalWrite(buttonLed, LOW);
+        ctaState = CTA_INACTIVE;
+        buttonPress = false;
         stage = DISPENSE;
       }
       break;
@@ -45,7 +47,33 @@ void cta() {
 }
 
 void dispense() {
-  Serial.println("DISPENSE Stage");
+  StaticJsonDocument<512> config = deserializeJson();
+  int randomNumber = random(0, config["dispense"].size());
+  char* selectDispense = config["dispense"][randomNumber];
+  char dispenseCopy[strlen(selectDispense) + 1] = {};
+  switch(dispenseState) {
+    case DISPENSE_INACTIVE:
+      strcpy(dispenseCopy, selectDispense);
+      play(dispenseCopy);
+      dispenseState = DISPENSE_PLAY_SCRIPT;
+      break;
+    case DISPENSE_PLAY_SCRIPT:
+      if (!playWav.isPlaying()) dispenseState = DISPENSE_CARD;
+      break;
+    case DISPENSE_CARD:
+      Serial.println("Dispensing card ...");
+      dispenseTimer = millis();
+      dispenseState = DISPENSE_PAUSE;
+      break;
+    case DISPENSE_PAUSE:
+      if (millis() - dispenseTimer >= (10 * 1000)) {
+        stop();
+        dispenseState = DISPENSE_INACTIVE;
+        Serial.println("Game Over");
+        stage = PITCH;
+      }
+      break;
+  }
 }
 
 void play(char* filename) {
