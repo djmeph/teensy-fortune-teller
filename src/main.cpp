@@ -8,7 +8,7 @@ void pitch() {
     stage = CTA;
   } else if (distance <= maxDistance && !playWav.isPlaying()) {
     StaticJsonDocument<512> config = deserializeJson();
-    int randomNumber = Entropy.random(0, config["pitch"].size());
+    int randomNumber = random(0, config["pitch"].size());
     char* selectPitch = config["pitch"][randomNumber];
     char pitchCopy[strlen(selectPitch) + 1] = {};
     strcpy(pitchCopy, selectPitch);
@@ -17,7 +17,31 @@ void pitch() {
 }
 
 void cta() {
-  Serial.println("CTA Stage");
+  StaticJsonDocument<512> config = deserializeJson();
+  int randomNumber = random(0, config["cta"].size());
+  char* selectCta = config["cta"][randomNumber];
+  char ctaCopy[strlen(selectCta) + 1] = {};
+  switch (ctaState) {
+    case CTA_INACTIVE:
+      strcpy(ctaCopy, selectCta);
+      play(ctaCopy);
+      ctaState = CTA_PLAY_SCRIPT;
+      break;
+    case CTA_PLAY_SCRIPT:
+      if (!playWav.isPlaying()) ctaState = CTA_LED_ON;
+      break;
+    case CTA_LED_ON:
+      digitalWrite(buttonLed, HIGH);
+      buttonPress = false;
+      ctaState = CTA_WAIT_FOR_BUTTON;
+      break;
+    case CTA_WAIT_FOR_BUTTON:
+      if (buttonPress) {
+        digitalWrite(buttonLed, LOW);
+        stage = DISPENSE;
+      }
+      break;
+  }
 }
 
 void dispense() {
@@ -78,6 +102,16 @@ void coinCounter() {
   }
 }
 
+void readButton() {
+  if (digitalRead(button) == LOW) {
+    if (!buttonState) buttonPress = true;
+    buttonState = true;
+    buttonReadTime = millis();
+  } else if (millis() - buttonReadTime > 50) {
+    buttonState = false;
+  }
+}
+
 void monitor() {
   // Serial.printf("Distance: %d cm\n", distance);
   if (playWav.isPlaying()) {
@@ -109,6 +143,8 @@ void setup() {
   while (!Serial) continue;
 
   pinMode(led, OUTPUT);
+  pinMode(buttonLed, OUTPUT);
+  pinMode(button, INPUT_PULLUP);
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
 
@@ -116,12 +152,9 @@ void setup() {
   amp0.gain(amp0gain);
   amp1.gain(amp1gain);
 
-  scheduler.addTask(userDistanceTask);
-  scheduler.addTask(coinCounterTask);
+  scheduler.addTask(readInputTask);
   scheduler.addTask(monitorTask);
   scheduler.addTask(stageRouterTask);
-
-  Entropy.Initialize();
 
   if (!SD.begin(BUILTIN_SDCARD)) {
     Serial.println("initialization failed!");
@@ -154,8 +187,7 @@ void setup() {
     ((float)persistent.unusedCents / 100)
   );
 
-  userDistanceTask.enable();
-  coinCounterTask.enable();
+  readInputTask.enable();
   monitorTask.enable();
   stageRouterTask.enable();
 

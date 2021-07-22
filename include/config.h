@@ -6,13 +6,29 @@
 #include <ArduinoJson.h>
 #include <Audio.h>
 #include <TaskScheduler.h>
-#include <Entropy.h>
 #include <EEPROMAnything.h>
 
 #define echoPin 41
 #define trigPin 40
 #define led 13 // Built-in LED
+#define buttonLed 12
+#define button 24
 #define configFileName "CONFJSON.TXT"
+
+static const int coinPin = 11;
+static long duration; // variable for the duration of sound wave travel
+static int distance; // variable for the distance measurement
+static int maxDistance; // Max distance until pitch trigger
+static float amp0gain; // Animatronics input gain
+static float amp1gain; // Speaker output gain
+static char json[512]; // Holds JSON string from SD card
+static int jsonLen; // Length of JSON string
+static unsigned long nowInterrupt = millis(); // Last time we got an interrupt in ms
+static int centsCounter = 0; // Individual coin cent counter
+static int centsToPlay; // Number of cents required to get one fortune
+static bool buttonState = false;
+static bool buttonPress = false;
+static unsigned long buttonReadTime = millis();
 
 void userDistance();
 void monitor();
@@ -27,21 +43,12 @@ void coinCounter();
 void readMemory();
 void stageRouter();
 void clearMemoryTask();
-
-static const int coinPin = 2;
-static long duration; // variable for the duration of sound wave travel
-static int distance; // variable for the distance measurement
-static int maxDistance; // Max distance until pitch trigger
-static float amp0gain; // Animitronics input gain
-static float amp1gain; // Speaker output gain
-static char json[512]; // Holds JSON string from SD card
-static int jsonLen; // Length of JSON string
-static unsigned long nowInterrupt = millis(); // Last time we got an interrupt in ms
-static int centsCounter = 0; // Individual coin cent counter
-static int centsToPlay; // Number of cents required to get one fortune
+void readInput();
+void readButton();
 
 enum Stage { PITCH, CTA, DISPENSE };
 enum Coin { START_DROP, COUNTING_DROP, END_DROP };
+enum CtaState { CTA_INACTIVE, CTA_PLAY_SCRIPT, CTA_LED_ON, CTA_WAIT_FOR_BUTTON };
 
 struct config_t {
   long centsTotal = 0; // Total cents added to this machine since entropy
@@ -49,12 +56,12 @@ struct config_t {
 } persistent;
 
 Scheduler scheduler;
-Task userDistanceTask(10, TASK_FOREVER, &userDistance);
-Task coinCounterTask(10, TASK_FOREVER, &coinCounter);
+Task readInputTask(10, TASK_FOREVER, &readInput);
 Task monitorTask(500, TASK_FOREVER, &monitor);
 Task stageRouterTask(100, TASK_FOREVER, &stageRouter);
 Stage stage = PITCH;
 Coin coin = END_DROP;
+CtaState ctaState = CTA_INACTIVE;
 
 // GUItool: begin automatically generated code
 AudioPlaySdWav           playWav;        //xy=864,427
@@ -109,10 +116,8 @@ void coinInterrupt() {
   nowInterrupt = millis();
   if (elapsed > 200) {
     centsCounter = 1;
-    Serial.printf("Time elapsed: %u\tPulses counted: %u\n", elapsed, centsCounter);
   } else if (elapsed > 50) {
     centsCounter++;
-    Serial.printf("Time elapsed: %u\tPulses counted: %u\n", elapsed, centsCounter);
   }
 }
 
@@ -133,4 +138,10 @@ void stageRouter() {
 void clearMemoryTask() {
   EEPROM_writeAnything(0, persistent);
   // Write something here to change the JSON clearMemory = false and save
+}
+
+void readInput() {
+  userDistance();
+  coinCounter();
+  readButton();
 }
