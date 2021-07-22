@@ -7,6 +7,7 @@
 #include <Audio.h>
 #include <TaskScheduler.h>
 #include <EEPROMAnything.h>
+#include <Entropy.h>
 
 #define echoPin 41
 #define trigPin 40
@@ -24,8 +25,8 @@ static float amp1gain; // Speaker output gain
 static char json[512]; // Holds JSON string from SD card
 static int jsonLen; // Length of JSON string
 static unsigned long nowInterrupt = millis(); // Last time we got an interrupt in ms
-static int centsCounter = 0; // Individual coin cent counter
-static int centsToPlay; // Number of cents required to get one fortune
+static int creditsCounter = 0; // Individual coin credit counter
+static int creditsToPlay; // Number of credits required to get one fortune
 static bool buttonState = false;
 static bool buttonPress = false;
 static unsigned long buttonReadTime = millis();
@@ -53,14 +54,14 @@ enum CtaState { CTA_INACTIVE, CTA_PLAY_SCRIPT, CTA_LED_ON, CTA_WAIT_FOR_BUTTON }
 enum DispenseState { DISPENSE_INACTIVE, DISPENSE_PLAY_SCRIPT, DISPENSE_CARD, DISPENSE_PAUSE };
 
 struct config_t {
-  long centsTotal = 0; // Total cents added to this machine since entropy
-  int unusedCents = 0; // Number of unused cents paid
+  long creditsTotal = 0; // Total credits added to this machine since entropy
+  int unusedCredits = 0; // Number of unused credits paid
 } persistent;
 
 Scheduler scheduler;
 Task readInputTask(10, TASK_FOREVER, &readInput);
-Task monitorTask(500, TASK_FOREVER, &monitor);
 Task stageRouterTask(100, TASK_FOREVER, &stageRouter);
+Task monitorTask(500, TASK_FOREVER, &monitor);
 Stage stage = PITCH;
 Coin coin = END_DROP;
 CtaState ctaState = CTA_INACTIVE;
@@ -118,9 +119,9 @@ void coinInterrupt() {
   const unsigned long elapsed = millis() - nowInterrupt;
   nowInterrupt = millis();
   if (elapsed > 200) {
-    centsCounter = 1;
+    creditsCounter = 1;
   } else if (elapsed > 50) {
-    centsCounter++;
+    creditsCounter++;
   }
 }
 

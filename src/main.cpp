@@ -1,14 +1,14 @@
 #include <config.h>
 
 void pitch() {
-  if (persistent.unusedCents >= centsToPlay) {
-    persistent.unusedCents -= centsToPlay;
+  if (persistent.unusedCredits >= creditsToPlay) {
+    persistent.unusedCredits -= creditsToPlay;
     EEPROM_writeAnything(0, persistent);
     stop();
     stage = CTA;
   } else if (distance <= maxDistance && !playWav.isPlaying()) {
     StaticJsonDocument<512> config = deserializeJson();
-    int randomNumber = random(0, config["pitch"].size());
+    int randomNumber = Entropy.random(0, config["pitch"].size());
     char* selectPitch = config["pitch"][randomNumber];
     char pitchCopy[strlen(selectPitch) + 1] = {};
     strcpy(pitchCopy, selectPitch);
@@ -18,7 +18,7 @@ void pitch() {
 
 void cta() {
   StaticJsonDocument<512> config = deserializeJson();
-  int randomNumber = random(0, config["cta"].size());
+  int randomNumber = Entropy.random(0, config["cta"].size());
   char* selectCta = config["cta"][randomNumber];
   char ctaCopy[strlen(selectCta) + 1] = {};
   switch (ctaState) {
@@ -48,7 +48,7 @@ void cta() {
 
 void dispense() {
   StaticJsonDocument<512> config = deserializeJson();
-  int randomNumber = random(0, config["dispense"].size());
+  int randomNumber = Entropy.random(0, config["dispense"].size());
   char* selectDispense = config["dispense"][randomNumber];
   char dispenseCopy[strlen(selectDispense) + 1] = {};
   switch(dispenseState) {
@@ -112,20 +112,20 @@ void coinCounter() {
       break;
     case COUNTING_DROP:
       if (millis() - nowInterrupt > 200) {
-        Serial.printf("Total cents inserted: %u\n", centsCounter);
-        persistent.unusedCents += centsCounter;
-        persistent.centsTotal += centsCounter;
+        Serial.printf("Total credits inserted: %u\n", creditsCounter);
+        persistent.unusedCredits += creditsCounter;
+        persistent.creditsTotal += creditsCounter;
         EEPROM_writeAnything(0, persistent);
         Serial.printf(
-          "Total $%0.2f\t Unused: $%0.2f\n",
-          ((float)persistent.centsTotal / 100),
-          ((float)persistent.unusedCents / 100)
+          "Total %u\t Unused: %u\n",
+          persistent.creditsTotal,
+          persistent.unusedCredits
         );
         coin = END_DROP;
       }
       break;
     case END_DROP:
-      if (centsCounter > 0) coin = START_DROP;
+      if (creditsCounter > 0) coin = START_DROP;
       break;
   }
 }
@@ -141,7 +141,9 @@ void readButton() {
 }
 
 void monitor() {
-  // Serial.printf("Distance: %d cm\n", distance);
+  if (distance <= maxDistance) {
+    Serial.printf("Distance: %d cm\n", distance);
+  }
   if (playWav.isPlaying()) {
     Serial.printf("Elapsed milliseconds: %d\n", playWav.positionMillis());
   }
@@ -181,8 +183,8 @@ void setup() {
   amp1.gain(amp1gain);
 
   scheduler.addTask(readInputTask);
-  scheduler.addTask(monitorTask);
   scheduler.addTask(stageRouterTask);
+  scheduler.addTask(monitorTask);
 
   if (!SD.begin(BUILTIN_SDCARD)) {
     Serial.println("initialization failed!");
@@ -197,7 +199,7 @@ void setup() {
   maxDistance = config["maxDistance"].as<int>();
   amp0gain = config["animatronicsGain"].as<float>();
   amp1gain = config["speakerGain"].as<float>();
-  centsToPlay = config["centsToPlay"].as<int>();
+  creditsToPlay = config["creditsToPlay"].as<int>();
   int clearMemory = config["clearMemory"].as<boolean>();
 
   if (clearMemory) clearMemoryTask();
@@ -205,19 +207,21 @@ void setup() {
   Serial.printf("Max user distance before pitch starts: %ucm \n", maxDistance);
   Serial.printf("Animatronics Gain: %0.2f\n", amp0gain);
   Serial.printf("Speaker Gain: %0.2f\n", amp1gain);
-  Serial.printf("Cost to play: $%0.2f\n", centsToPlay / 100);
+  Serial.printf("Cost to play: %u\n", creditsToPlay);
 
   EEPROM_readAnything(0, persistent);
 
   Serial.printf(
-    "Total $%0.2f\t Unused: $%0.2f\n",
-    ((float)persistent.centsTotal / 100),
-    ((float)persistent.unusedCents / 100)
+    "Total %u\t Unused: %u\n",
+    persistent.creditsTotal,
+    persistent.unusedCredits
   );
 
   readInputTask.enable();
-  monitorTask.enable();
   stageRouterTask.enable();
+  monitorTask.enable();
+
+  Entropy.Initialize();
 
   Serial.println("Setup complete");
 }
