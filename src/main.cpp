@@ -178,10 +178,6 @@ void setup() {
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
 
-  AudioMemory(512);
-  amp0.gain(amp0gain);
-  amp1.gain(amp1gain);
-
   scheduler.addTask(readInputTask);
   scheduler.addTask(stageRouterTask);
   scheduler.addTask(monitorTask);
@@ -201,6 +197,10 @@ void setup() {
   amp1gain = config["speakerGain"].as<float>();
   creditsToPlay = config["creditsToPlay"].as<int>();
   int clearMemory = config["clearMemory"].as<boolean>();
+
+  AudioMemory(512);
+  amp0.gain(amp0gain);
+  amp1.gain(amp1gain);
 
   if (clearMemory) clearMemoryTask();
 
