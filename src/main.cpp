@@ -76,6 +76,10 @@ void dispense() {
   }
 }
 
+void outOfCards() {
+  Serial.println("Out of cards");
+}
+
 void play(char* filename) {
   Serial.printf("Playing file: %s\n", filename);
   if (SD.exists(filename)) {
@@ -141,12 +145,13 @@ void readButton() {
 }
 
 void monitor() {
-  if (distance <= maxDistance) {
-    Serial.printf("Distance: %d cm\n", distance);
-  }
-  if (playWav.isPlaying()) {
-    Serial.printf("Elapsed milliseconds: %d\n", playWav.positionMillis());
-  }
+  // if (distance <= maxDistance) {
+  //   Serial.printf("Distance: %d cm\n", distance);
+  // }
+  // if (playWav.isPlaying()) {
+  //   Serial.printf("Elapsed milliseconds: %d\n", playWav.positionMillis());
+  // }
+  Serial.printf("Loaded state: %u\n", loaded);
 }
 
 void errorBlink() {
@@ -167,6 +172,35 @@ void errorBlink() {
   digitalWrite(led, LOW);
 }
 
+void outOfCardsRead() {
+  // read the state of the switch into a local variable:
+  int reading = digitalRead(loadedInput);
+
+  // check to see if you just pressed the button
+  // (i.e. the input went from LOW to HIGH), and you've waited long enough
+  // since the last press to ignore any noise:
+
+  // If the switch changed, due to noise or pressing:
+  if (reading != lastButtonState) {
+    // reset the debouncing timer
+    lastDebounceTime = millis();
+  }
+
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    // whatever the reading is at, it's been there for longer than the debounce
+    // delay, so take it as the actual current state:
+
+    // if the button state has changed:
+    if (reading != loaded) {
+      loaded = reading;
+      stage = loaded ? PITCH : OUT_OF_CARDS;
+    }
+  }
+
+  // save the reading. Next time through the loop, it'll be the lastButtonState:
+  lastButtonState = reading;
+}
+
 void setup() {
   Serial.begin(9600);
   attachInterrupt(digitalPinToInterrupt(coinPin), coinInterrupt, RISING);
@@ -177,6 +211,8 @@ void setup() {
   pinMode(button, INPUT_PULLUP);
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
+  pinMode(dispenseButton, OUTPUT);
+  pinMode(loadedInput, INPUT_PULLUP);
 
   scheduler.addTask(readInputTask);
   scheduler.addTask(stageRouterTask);

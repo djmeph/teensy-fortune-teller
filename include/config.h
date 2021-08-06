@@ -14,6 +14,8 @@
 #define led 13 // Built-in LED
 #define buttonLed 12
 #define button 24
+#define loadedInput 14
+#define dispenseButton 15
 #define configFileName "CONFJSON.TXT"
 
 static const int coinPin = 11;
@@ -31,12 +33,21 @@ static bool buttonState = false;
 static bool buttonPress = false;
 static unsigned long buttonReadTime = millis();
 static long dispenseTimer = millis();
+// static long outOfCardsDebounce = 0;
+// static unsigned long debounceDelay = 200;
+// static int loaded;
+// static int lastLoaded = HIGH;
+static int loaded;
+static int lastButtonState = HIGH;
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50;
 
 void userDistance();
 void monitor();
 void pitch();
 void cta();
 void dispense();
+void outOfCards();
 void errorBlink();
 void play(char filename[]);
 void stop();
@@ -47,8 +58,9 @@ void stageRouter();
 void clearMemoryTask();
 void readInput();
 void readButton();
+void outOfCardsRead();
 
-enum Stage { PITCH, CTA, DISPENSE };
+enum Stage { PITCH, CTA, DISPENSE, OUT_OF_CARDS };
 enum Coin { START_DROP, COUNTING_DROP, END_DROP };
 enum CtaState { CTA_INACTIVE, CTA_PLAY_SCRIPT, CTA_LED_ON, CTA_WAIT_FOR_BUTTON };
 enum DispenseState { DISPENSE_INACTIVE, DISPENSE_PLAY_SCRIPT, DISPENSE_CARD, DISPENSE_PAUSE };
@@ -71,10 +83,10 @@ DispenseState dispenseState = DISPENSE_INACTIVE;
 AudioPlaySdWav           playWav;        //xy=864,427
 AudioAmplifier           amp0;           //xy=1081,400
 AudioAmplifier           amp1;           //xy=1084,440
-// AudioOutputAnalog        dac;            //xy=1313,421
+AudioOutputAnalog        dac;            //xy=1313,421
 // AudioOutputMQS           dac;           //xy=1258,427
 // AudioOutputI2S           dac;           //xy=1267,419
-AudioOutputPT8211        dac;       //xy=1285,416
+// AudioOutputPT8211        dac;       //xy=1285,416
 AudioConnection          patchCord1(playWav, 0, amp0, 0);
 AudioConnection          patchCord2(playWav, 1, amp1, 0);
 AudioConnection          patchCord3(amp0, 0, dac, 0);
@@ -127,15 +139,14 @@ void coinInterrupt() {
 
 void stageRouter() {
   switch (stage) {
+    case OUT_OF_CARDS:
+      return outOfCards();
     case PITCH:
-      pitch();
-      break;
+      return pitch();
     case CTA:
-      cta();
-      break;
+      return cta();
     case DISPENSE:
-      dispense();
-      break;
+      return dispense();
   }
 }
 
@@ -145,6 +156,7 @@ void clearMemoryTask() {
 }
 
 void readInput() {
+  outOfCardsRead();
   userDistance();
   coinCounter();
   readButton();
