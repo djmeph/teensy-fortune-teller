@@ -58,12 +58,19 @@ void dispense() {
       dispenseState = DISPENSE_PLAY_SCRIPT;
       break;
     case DISPENSE_PLAY_SCRIPT:
-      if (!playWav.isPlaying()) dispenseState = DISPENSE_CARD;
+      if (!playWav.isPlaying()) {
+        Serial.println("Dispensing card ...");
+        dispenseStart = millis();
+        digitalWrite(dispenseButton, HIGH);
+        dispenseState = DISPENSE_CARD;
+      }
       break;
     case DISPENSE_CARD:
-      Serial.println("Dispensing card ...");
-      dispenseTimer = millis();
-      dispenseState = DISPENSE_PAUSE;
+      if ((millis() - dispenseStart) >= 100) {
+        digitalWrite(dispenseButton, LOW);
+        dispenseTimer = millis();
+        dispenseState = DISPENSE_PAUSE;
+      }
       break;
     case DISPENSE_PAUSE:
       if (millis() - dispenseTimer >= (10 * 1000)) {
@@ -84,7 +91,7 @@ void outOfCards() {
 
   switch (outOfCardsState) {
     case OUT_INACTIVE:
-      playWav.stop();
+      stop();
       digitalWrite(buttonLed, LOW);
       strcpy(outOfCardsCopy, selectOutOfCards);
       play(outOfCardsCopy);
@@ -205,7 +212,7 @@ void outOfCardsRead() {
       loaded = reading;
       stage = loaded ? PITCH : OUT_OF_CARDS;
       if (loaded) {
-        playWav.stop();
+        stop();
         outOfCardsState = OUT_INACTIVE;
       }
     }
@@ -217,7 +224,7 @@ void outOfCardsRead() {
 void setup() {
   Serial.begin(9600);
   attachInterrupt(digitalPinToInterrupt(coinPin), coinInterrupt, RISING);
-  while (!Serial) continue;
+  // while (!Serial) continue;
 
   pinMode(led, OUTPUT);
   pinMode(buttonLed, OUTPUT);

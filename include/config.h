@@ -32,6 +32,7 @@ static int creditsToPlay; // Number of credits required to get one fortune
 static bool buttonState = false;
 static bool buttonPress = false;
 static unsigned long buttonReadTime = millis();
+static unsigned long dispenseStart;
 static long dispenseTimer = millis();
 static int loaded;
 static int lastLoadedState = HIGH;
