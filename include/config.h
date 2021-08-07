@@ -9,8 +9,8 @@
 #include <EEPROMAnything.h>
 #include <Entropy.h>
 
-#define echoPin 41
-#define trigPin 40
+#define echoPin 22
+#define trigPin 23
 #define led 13 // Built-in LED
 #define buttonLed 12
 #define button 24
@@ -33,14 +33,12 @@ static bool buttonState = false;
 static bool buttonPress = false;
 static unsigned long buttonReadTime = millis();
 static long dispenseTimer = millis();
-// static long outOfCardsDebounce = 0;
-// static unsigned long debounceDelay = 200;
-// static int loaded;
-// static int lastLoaded = HIGH;
 static int loaded;
-static int lastButtonState = HIGH;
-unsigned long lastDebounceTime = 0;
-unsigned long debounceDelay = 50;
+static int lastLoadedState = HIGH;
+static unsigned long lastLoadedDebounceTime = 0;
+static unsigned long loadedDebounceDelay = 200;
+static unsigned int outPauseStart;
+static unsigned int outPauseTime;
 
 void userDistance();
 void monitor();
@@ -64,6 +62,7 @@ enum Stage { PITCH, CTA, DISPENSE, OUT_OF_CARDS };
 enum Coin { START_DROP, COUNTING_DROP, END_DROP };
 enum CtaState { CTA_INACTIVE, CTA_PLAY_SCRIPT, CTA_LED_ON, CTA_WAIT_FOR_BUTTON };
 enum DispenseState { DISPENSE_INACTIVE, DISPENSE_PLAY_SCRIPT, DISPENSE_CARD, DISPENSE_PAUSE };
+enum OutOfCardsState { OUT_INACTIVE, OUT_PLAY_SCRIPT, OUT_PAUSE, OUT_FINISHED };
 
 struct config_t {
   long creditsTotal = 0; // Total credits added to this machine since entropy
@@ -78,6 +77,7 @@ Stage stage = PITCH;
 Coin coin = END_DROP;
 CtaState ctaState = CTA_INACTIVE;
 DispenseState dispenseState = DISPENSE_INACTIVE;
+OutOfCardsState outOfCardsState = OUT_INACTIVE;
 
 // GUItool: begin automatically generated code
 AudioPlaySdWav           playWav;        //xy=864,427

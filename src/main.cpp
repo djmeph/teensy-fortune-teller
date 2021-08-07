@@ -77,7 +77,32 @@ void dispense() {
 }
 
 void outOfCards() {
-  Serial.println("Out of cards");
+  StaticJsonDocument<512> config = deserializeJson();
+  int randomNumber = Entropy.random(0, config["outOfCards"].size());
+  char* selectOutOfCards = config["outOfCards"][randomNumber];
+  char outOfCardsCopy[strlen(selectOutOfCards) + 1] = {};
+
+  switch (outOfCardsState) {
+    case OUT_INACTIVE:
+      playWav.stop();
+      digitalWrite(buttonLed, LOW);
+      strcpy(outOfCardsCopy, selectOutOfCards);
+      play(outOfCardsCopy);
+      outOfCardsState = OUT_PLAY_SCRIPT;
+      break;
+    case OUT_PLAY_SCRIPT:
+      if (!playWav.isPlaying()) {
+        outPauseStart = millis();
+        outOfCardsState = OUT_PAUSE;
+      }
+      break;
+    case OUT_PAUSE:
+      if ((millis() - outPauseStart) > outPauseTime) outOfCardsState = OUT_FINISHED;
+      break;
+    case OUT_FINISHED:
+      outOfCardsState = OUT_INACTIVE;
+      break;
+  }
 }
 
 void play(char* filename) {
@@ -145,13 +170,12 @@ void readButton() {
 }
 
 void monitor() {
-  // if (distance <= maxDistance) {
-  //   Serial.printf("Distance: %d cm\n", distance);
-  // }
-  // if (playWav.isPlaying()) {
-  //   Serial.printf("Elapsed milliseconds: %d\n", playWav.positionMillis());
-  // }
-  Serial.printf("Loaded state: %u\n", loaded);
+  if (distance <= maxDistance) {
+    Serial.printf("Distance: %d cm\n", distance);
+  }
+  if (playWav.isPlaying()) {
+    Serial.printf("Elapsed milliseconds: %d\n", playWav.positionMillis());
+  }
 }
 
 void errorBlink() {
@@ -173,32 +197,21 @@ void errorBlink() {
 }
 
 void outOfCardsRead() {
-  // read the state of the switch into a local variable:
   int reading = digitalRead(loadedInput);
+  if (reading != lastLoadedState) lastLoadedDebounceTime = millis();
 
-  // check to see if you just pressed the button
-  // (i.e. the input went from LOW to HIGH), and you've waited long enough
-  // since the last press to ignore any noise:
-
-  // If the switch changed, due to noise or pressing:
-  if (reading != lastButtonState) {
-    // reset the debouncing timer
-    lastDebounceTime = millis();
-  }
-
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    // whatever the reading is at, it's been there for longer than the debounce
-    // delay, so take it as the actual current state:
-
-    // if the button state has changed:
+  if ((millis() - lastLoadedDebounceTime) > loadedDebounceDelay) {
     if (reading != loaded) {
       loaded = reading;
       stage = loaded ? PITCH : OUT_OF_CARDS;
+      if (loaded) {
+        playWav.stop();
+        outOfCardsState = OUT_INACTIVE;
+      }
     }
   }
 
-  // save the reading. Next time through the loop, it'll be the lastButtonState:
-  lastButtonState = reading;
+  lastLoadedState = reading;
 }
 
 void setup() {
@@ -232,6 +245,8 @@ void setup() {
   amp0gain = config["animatronicsGain"].as<float>();
   amp1gain = config["speakerGain"].as<float>();
   creditsToPlay = config["creditsToPlay"].as<int>();
+  outPauseTime = config["outPauseTime"].as<unsigned int>();
+
   int clearMemory = config["clearMemory"].as<boolean>();
 
   AudioMemory(512);
