@@ -9,37 +9,62 @@
 #include <EEPROMAnything.h>
 #include <Entropy.h>
 
-#define echoPin 22
-#define trigPin 23
+#define echoPin 1
+#define trigPin 3
 #define led 13 // Built-in LED
 #define buttonLed 12
-#define button 24
+#define buttonPin 24
+#define coinPin 10
 #define loadedInput 14
 #define dispenseButton 15
 #define configFileName "CONFJSON.TXT"
 
-static const int coinPin = 11;
-static long duration; // variable for the duration of sound wave travel
-static int distance; // variable for the distance measurement
-static int maxDistance; // Max distance until pitch trigger
-static float amp0gain; // Animatronics input gain
-static float amp1gain; // Speaker output gain
-static char json[512]; // Holds JSON string from SD card
-static int jsonLen; // Length of JSON string
-static unsigned long nowInterrupt = millis(); // Last time we got an interrupt in ms
-static int creditsCounter = 0; // Individual coin credit counter
-static int creditsToPlay; // Number of credits required to get one fortune
-static bool buttonState = false;
-static bool buttonPress = false;
-static unsigned long buttonReadTime = millis();
-static unsigned long dispenseStart;
-static long dispenseTimer = millis();
-static int loaded;
-static int lastLoadedState = HIGH;
-static unsigned long lastLoadedDebounceTime = 0;
-static unsigned long loadedDebounceDelay = 200;
-static unsigned int outPauseStart;
-static unsigned int outPauseTime;
+struct sonicRangeFinder_t {
+  long duration;
+  int distance;
+  int maxDistance;
+} static approach;
+
+struct jsonDocument_t {
+  char payload[512];
+  int len;
+} static config;
+
+struct buttonInput_t {
+  bool state = false;
+  bool press = false;
+  long readTime = millis();
+} static button, coin;
+
+struct loadedState_t {
+  int state;
+  int lastState = HIGH;
+  unsigned lastDebounceTime = 0;
+  unsigned long debounceDelay = 200;
+};
+
+struct cardDispenser_t {
+  unsigned long start;
+  long timer = millis();
+  loadedState_t loaded;
+} static dispenser;
+
+struct count_t {
+  long total = 0; // Total credits added to this machine since entropy
+  int unused = 0; // Number of unused credits paid
+  int counter = 0; // Individual coin credit counter
+  int price; // Number of credits required to get one fortune
+} static credits;
+
+struct gains_t {
+  float animatronics;
+  float speaker;
+} static gain;
+
+struct pause_t {
+  unsigned int start;
+  unsigned int time;
+} static outPause;
 
 void userDistance();
 void monitor();
@@ -50,13 +75,12 @@ void outOfCards();
 void errorBlink();
 void play(char filename[]);
 void stop();
-void coinInterrupt();
-void coinCounter();
 void readMemory();
 void stageRouter();
 void clearMemoryTask();
 void readInput();
 void readButton();
+void readCoin();
 void outOfCardsRead();
 
 enum Stage { PITCH, CTA, DISPENSE, OUT_OF_CARDS };
@@ -65,34 +89,26 @@ enum CtaState { CTA_INACTIVE, CTA_PLAY_SCRIPT, CTA_LED_ON, CTA_WAIT_FOR_BUTTON }
 enum DispenseState { DISPENSE_INACTIVE, DISPENSE_PLAY_SCRIPT, DISPENSE_CARD, DISPENSE_PAUSE };
 enum OutOfCardsState { OUT_INACTIVE, OUT_PLAY_SCRIPT, OUT_PAUSE, OUT_FINISHED };
 
-struct config_t {
-  long creditsTotal = 0; // Total credits added to this machine since entropy
-  int unusedCredits = 0; // Number of unused credits paid
-} persistent;
-
 Scheduler scheduler;
 Task readInputTask(10, TASK_FOREVER, &readInput);
 Task stageRouterTask(100, TASK_FOREVER, &stageRouter);
 Task monitorTask(500, TASK_FOREVER, &monitor);
 Stage stage = PITCH;
-Coin coin = END_DROP;
 CtaState ctaState = CTA_INACTIVE;
 DispenseState dispenseState = DISPENSE_INACTIVE;
 OutOfCardsState outOfCardsState = OUT_INACTIVE;
 
 // GUItool: begin automatically generated code
-AudioPlaySdWav           playWav;        //xy=864,427
+AudioPlaySdWav           playWav;     //xy=864,427
 AudioAmplifier           amp0;           //xy=1081,400
 AudioAmplifier           amp1;           //xy=1084,440
-AudioOutputAnalog        dac;            //xy=1313,421
-// AudioOutputMQS           dac;           //xy=1258,427
-// AudioOutputI2S           dac;           //xy=1267,419
-// AudioOutputPT8211        dac;       //xy=1285,416
+AudioOutputAnalogStereo  dac;          //xy=1277,417
 AudioConnection          patchCord1(playWav, 0, amp0, 0);
 AudioConnection          patchCord2(playWav, 1, amp1, 0);
 AudioConnection          patchCord3(amp0, 0, dac, 0);
 AudioConnection          patchCord4(amp1, 0, dac, 1);
 // GUItool: end automatically generated code
+
 
 void readConfig() {
   if (SD.exists(configFileName)) {
@@ -101,12 +117,12 @@ void readConfig() {
     if (file) {
       Serial.printf("Reading %s:\n", configFileName);
 
-      jsonLen = file.size();
+      config.len = file.size();
 
-      for (int i = 0; i < jsonLen; i++) json[i] = file.read();
+      for (int i = 0; i < config.len; i++) config.payload[i] = file.read();
       file.close();
 
-      for (int i = 0; i < jsonLen; i++) Serial.write((char)json[i]);
+      for (int i = 0; i < config.len; i++) Serial.write((char)config.payload[i]);
       Serial.println("");
     } else {
       Serial.printf("error opening %s\n", configFileName);
@@ -117,25 +133,15 @@ void readConfig() {
 }
 
 StaticJsonDocument<512> deserializeJson() {
-  StaticJsonDocument<512> config;
-  char jsonCopy[jsonLen + 1];
-  for (int i = 0; i < jsonLen; i++) jsonCopy[i] = json[i];
-  DeserializationError error = deserializeJson(config, jsonCopy);
+  StaticJsonDocument<512> doc;
+  char jsonCopy[config.len + 1];
+  for (int i = 0; i < config.len; i++) jsonCopy[i] = config.payload[i];
+  DeserializationError error = deserializeJson(doc, jsonCopy);
 
   if (error) {
     Serial.printf("deserializeJson() failed: %s\n", error.f_str());
   }
-  return config;
-}
-
-void coinInterrupt() {
-  const unsigned long elapsed = millis() - nowInterrupt;
-  nowInterrupt = millis();
-  if (elapsed > 200) {
-    creditsCounter = 1;
-  } else if (elapsed > 50) {
-    creditsCounter++;
-  }
+  return doc;
 }
 
 void stageRouter() {
@@ -152,13 +158,13 @@ void stageRouter() {
 }
 
 void clearMemoryTask() {
-  EEPROM_writeAnything(0, persistent);
+  EEPROM_writeAnything(0, credits);
   // Write something here to change the JSON clearMemory = false and save
 }
 
 void readInput() {
   outOfCardsRead();
   userDistance();
-  coinCounter();
+  readCoin();
   readButton();
 }
