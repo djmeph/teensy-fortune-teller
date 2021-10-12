@@ -23,18 +23,18 @@ struct sonicRangeFinder_t {
   long duration;
   int distance;
   int maxDistance;
-} static approach;
+};
 
 struct jsonDocument_t {
   char payload[512];
   int len;
-} static config;
+};
 
 struct buttonInput_t {
   bool state = false;
   bool press = false;
   long readTime = millis();
-} static button, coin;
+};
 
 struct loadedState_t {
   int state;
@@ -47,24 +47,34 @@ struct cardDispenser_t {
   unsigned long start;
   long timer = millis();
   loadedState_t loaded;
-} static dispenser;
+};
 
 struct count_t {
   long total = 0; // Total credits added to this machine since entropy
   int unused = 0; // Number of unused credits paid
   int counter = 0; // Individual coin credit counter
   int price; // Number of credits required to get one fortune
-} static credits;
+};
 
 struct gains_t {
   float animatronics;
   float speaker;
-} static gain;
+};
 
 struct pause_t {
   unsigned int start;
   unsigned int time;
-} static outPause, pitchPause;
+};
+
+static sonicRangeFinder_t approach;
+static jsonDocument_t config;
+static buttonInput_t button;
+static buttonInput_t coin;
+static cardDispenser_t dispenser;
+static count_t credits;
+static gains_t gain;
+static pause_t outPause;
+static pause_t pitchPause;
 
 void userDistance();
 void monitor();
@@ -99,13 +109,6 @@ CtaState ctaState = CTA_INACTIVE;
 DispenseState dispenseState = DISPENSE_INACTIVE;
 OutOfCardsState outOfCardsState = OUT_INACTIVE;
 PitchPlayer pitchPlayer = PITCH_READY;
-
-
-#include <Audio.h>
-#include <Wire.h>
-#include <SPI.h>
-#include <SD.h>
-#include <SerialFlash.h>
 
 // GUItool: begin automatically generated code
 AudioPlaySdWav           playWav;     //xy=864,427
