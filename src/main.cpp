@@ -6,13 +6,19 @@ void pitch() {
     EEPROM_writeAnything(0, credits);
     stop();
     stage = CTA;
-  } else if (approach.distance <= approach.maxDistance && !playWav.isPlaying()) {
+  } else if (approach.distance <= approach.maxDistance && pitchPlayer == PITCH_READY) {
     StaticJsonDocument<512> doc = deserializeJson();
     int randomNumber = Entropy.random(0, doc["pitch"].size());
     char* selectPitch = doc["pitch"][randomNumber];
     char pitchCopy[strlen(selectPitch) + 1] = {};
     strcpy(pitchCopy, selectPitch);
+    pitchPlayer = PITCH_PLAYING;
     play(pitchCopy);
+  } else if (pitchPlayer == PITCH_PLAYING && !playWav.isPlaying()) {
+    pitchPlayer = PITCH_PAUSED;
+    pitchPause.start = millis();
+  } else if (pitchPlayer == PITCH_PAUSED && millis() - pitchPause.start >= pitchPause.time) {
+    pitchPlayer = PITCH_READY;
   }
 }
 
@@ -127,16 +133,21 @@ void stop() {
   if (playWav.isPlaying()) {
     playWav.stop();
   }
+  pitchPlayer = PITCH_READY;
 }
 
 void userDistance() {
-  digitalWrite(trigPin, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
-  approach.duration = pulseIn(echoPin, HIGH);
-  approach.distance = approach.duration * 0.034 / 2;
+  if (stage == PITCH) {
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
+    approach.duration = pulseIn(echoPin, HIGH);
+    approach.distance = approach.duration * 0.034 / 2;
+  } else {
+    approach.distance = approach.maxDistance + 1;
+  }
 }
 
 void readButton() {
@@ -146,13 +157,6 @@ void readButton() {
     button.readTime = millis();
   } else if (millis() - button.readTime > 50) {
     button.state = false;
-    credits.unused++;
-    credits.total++;
-    Serial.printf(
-      "Total %u\t Unused: %u\n",
-      credits.total,
-      credits.unused
-    );
   }
 }
 
@@ -161,7 +165,16 @@ void readCoin() {
     if (!coin.state) coin.press = true;
     coin.state = true;
     coin.readTime = millis();
-  } else if (millis() - coin.readTime > 50) {
+  } else if (millis() - coin.readTime > 150) {
+    if (coin.state) {
+      credits.unused++;
+      credits.total++;
+      Serial.printf(
+        "Total %u\t Unused: %u\n",
+        credits.total,
+        credits.unused
+      );
+    }
     coin.state = false;
   }
 }
@@ -242,8 +255,9 @@ void setup() {
   approach.maxDistance = doc["maxDistance"].as<int>();
   gain.animatronics = doc["animatronicsGain"].as<float>();
   gain.speaker = doc["speakerGain"].as<float>();
-  credits.price = doc["credits.price"].as<int>();
-  outPause.time = doc["outPause.time"].as<unsigned int>();
+  credits.price = doc["creditsToPlay"].as<int>();
+  outPause.time = doc["outPauseTime"].as<unsigned int>();
+  pitchPause.time = doc["pitchPauseTime"].as<unsigned int>();
 
   int clearMemory = doc["clearMemory"].as<boolean>();
 

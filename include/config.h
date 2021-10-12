@@ -9,10 +9,10 @@
 #include <EEPROMAnything.h>
 #include <Entropy.h>
 
-#define echoPin 1
-#define trigPin 3
+#define echoPin 35
+#define trigPin 37
 #define led 13 // Built-in LED
-#define buttonLed 12
+#define buttonLed 33
 #define buttonPin 24
 #define coinPin 10
 #define loadedInput 14
@@ -64,7 +64,7 @@ struct gains_t {
 struct pause_t {
   unsigned int start;
   unsigned int time;
-} static outPause;
+} static outPause, pitchPause;
 
 void userDistance();
 void monitor();
@@ -88,6 +88,7 @@ enum Coin { START_DROP, COUNTING_DROP, END_DROP };
 enum CtaState { CTA_INACTIVE, CTA_PLAY_SCRIPT, CTA_LED_ON, CTA_WAIT_FOR_BUTTON };
 enum DispenseState { DISPENSE_INACTIVE, DISPENSE_PLAY_SCRIPT, DISPENSE_CARD, DISPENSE_PAUSE };
 enum OutOfCardsState { OUT_INACTIVE, OUT_PLAY_SCRIPT, OUT_PAUSE, OUT_FINISHED };
+enum PitchPlayer { PITCH_READY, PITCH_PLAYING, PITCH_PAUSED };
 
 Scheduler scheduler;
 Task readInputTask(10, TASK_FOREVER, &readInput);
@@ -97,12 +98,20 @@ Stage stage = PITCH;
 CtaState ctaState = CTA_INACTIVE;
 DispenseState dispenseState = DISPENSE_INACTIVE;
 OutOfCardsState outOfCardsState = OUT_INACTIVE;
+PitchPlayer pitchPlayer = PITCH_READY;
+
+
+#include <Audio.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <SD.h>
+#include <SerialFlash.h>
 
 // GUItool: begin automatically generated code
 AudioPlaySdWav           playWav;     //xy=864,427
 AudioAmplifier           amp0;           //xy=1081,400
 AudioAmplifier           amp1;           //xy=1084,440
-AudioOutputAnalogStereo  dac;          //xy=1277,417
+AudioOutputPT8211        dac;          //xy=1277,417
 AudioConnection          patchCord1(playWav, 0, amp0, 0);
 AudioConnection          patchCord2(playWav, 1, amp1, 0);
 AudioConnection          patchCord3(amp0, 0, dac, 0);
