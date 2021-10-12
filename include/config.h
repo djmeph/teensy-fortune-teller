@@ -19,34 +19,34 @@
 #define dispenseButton 15
 #define configFileName "CONFJSON.TXT"
 
-struct sonicRangeFinder_t {
+struct sonic_range_finder_t {
   long duration;
   int distance;
   int maxDistance;
 };
 
-struct jsonDocument_t {
+struct json_document_t {
   char payload[512];
   int len;
 };
 
-struct buttonInput_t {
+struct button_input_t {
   bool state = false;
   bool press = false;
   long readTime = millis();
 };
 
-struct loadedState_t {
+struct loaded_state_t {
   int state;
   int lastState = HIGH;
   unsigned lastDebounceTime = 0;
   unsigned long debounceDelay = 200;
 };
 
-struct cardDispenser_t {
+struct card_dispenser_t {
   unsigned long start;
   long timer = millis();
-  loadedState_t loaded;
+  loaded_state_t loaded;
 };
 
 struct count_t {
@@ -66,11 +66,11 @@ struct pause_t {
   unsigned int time;
 };
 
-static sonicRangeFinder_t approach;
-static jsonDocument_t config;
-static buttonInput_t button;
-static buttonInput_t coin;
-static cardDispenser_t dispenser;
+static sonic_range_finder_t approach;
+static json_document_t config;
+static button_input_t button;
+static button_input_t coin;
+static card_dispenser_t dispenser;
 static count_t credits;
 static gains_t gain;
 static pause_t outPause;
