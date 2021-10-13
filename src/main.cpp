@@ -165,7 +165,7 @@ void readCoin() {
     if (!coin.state) coin.press = true;
     coin.state = true;
     coin.readTime = millis();
-  } else if (millis() - coin.readTime > 150) {
+  } else if (millis() - coin.readTime > 50) {
     if (coin.state) {
       credits.unused++;
       credits.total++;
@@ -260,10 +260,10 @@ void setup() {
   pitchPause.time = doc["pitchPauseTime"].as<unsigned int>();
 
   int clearMemory = doc["clearMemory"].as<boolean>();
-
   AudioMemory(512);
-  amp0.gain(gain.animatronics);
-  amp1.gain(gain.speaker);
+
+  amp0.gain(gain.speaker);
+  amp1.gain(gain.animatronics);
 
   if (clearMemory) clearMemoryTask();
 
