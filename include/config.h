@@ -8,6 +8,7 @@
 #include <TaskScheduler.h>
 #include <EEPROMAnything.h>
 #include <Entropy.h>
+#include <button.h>
 
 #define echoPin 35
 #define trigPin 37
@@ -28,12 +29,6 @@ struct sonic_range_finder_t {
 struct json_document_t {
   char payload[512];
   int len;
-};
-
-struct button_input_t {
-  bool state = false;
-  bool press = false;
-  long readTime = millis();
 };
 
 struct loaded_state_t {
@@ -69,13 +64,13 @@ struct pause_t {
 
 static sonic_range_finder_t approach;
 static json_document_t config;
-static button_input_t button;
-static button_input_t coin;
 static card_dispenser_t dispenser;
 static count_t credits;
 static gains_t gain;
 static pause_t outPause;
 static pause_t pitchPause;
+
+static bool buttonPress;
 
 void userDistance();
 void monitor();
@@ -90,6 +85,7 @@ void readMemory();
 void stageRouter();
 void clearMemoryTask();
 void readInput();
+void readDistance();
 void readButton();
 void readCoin();
 void outOfCardsRead();
@@ -103,6 +99,7 @@ enum PitchPlayer { PITCH_READY, PITCH_PLAYING, PITCH_PAUSED };
 
 Scheduler scheduler;
 Task readInputTask(1, TASK_FOREVER, &readInput);
+Task readDistanceTask(10, TASK_FOREVER, &readDistance);
 Task stageRouterTask(100, TASK_FOREVER, &stageRouter);
 Task monitorTask(500, TASK_FOREVER, &monitor);
 Stage stage = PITCH;
@@ -110,6 +107,8 @@ CtaState ctaState = CTA_INACTIVE;
 DispenseState dispenseState = DISPENSE_INACTIVE;
 OutOfCardsState outOfCardsState = OUT_INACTIVE;
 PitchPlayer pitchPlayer = PITCH_READY;
+Button coinTrigger;
+Button buttonTrigger;
 
 // GUItool: begin automatically generated code
 AudioPlaySdWav           playWav;     //xy=212,318
@@ -177,7 +176,10 @@ void clearMemoryTask() {
 
 void readInput() {
   outOfCardsRead();
-  userDistance();
   readCoin();
   readButton();
+}
+
+void readDistance() {
+  userDistance();
 }

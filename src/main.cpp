@@ -38,14 +38,14 @@ void cta() {
       break;
     case CTA_LED_ON:
       digitalWrite(buttonLed, HIGH);
-      button.press = false;
+      buttonPress = false;
       ctaState = CTA_WAIT_FOR_BUTTON;
       break;
     case CTA_WAIT_FOR_BUTTON:
-      if (button.press) {
+      if (buttonPress) {
         digitalWrite(buttonLed, LOW);
         ctaState = CTA_INACTIVE;
-        button.press = false;
+        buttonPress = false;
         stage = DISPENSE;
       }
       break;
@@ -151,31 +151,21 @@ void userDistance() {
 }
 
 void readButton() {
-  if (digitalRead(buttonPin) == LOW) {
-    if (!button.state) button.press = true;
-    button.state = true;
-    button.readTime = millis();
-  } else if (millis() - button.readTime > 50) {
-    button.state = false;
+  if (buttonTrigger.debounce()) {
+    Serial.println("Button Pushed");
+    buttonPress = true;
   }
 }
 
 void readCoin() {
-  if (digitalRead(coinPin) == LOW) {
-    if (!coin.state) coin.press = true;
-    coin.state = true;
-    coin.readTime = millis();
-  } else if (millis() - coin.readTime > 50) {
-    if (coin.state) {
-      credits.unused++;
-      credits.total++;
-      Serial.printf(
-        "Total %u\t Unused: %u\n",
-        credits.total,
-        credits.unused
-      );
-    }
-    coin.state = false;
+  if (coinTrigger.debounce()) {
+    credits.unused++;
+    credits.total++;
+    Serial.printf(
+      "Total %u\t Unused: %u\n",
+      credits.total,
+      credits.unused
+    );
   }
 }
 
@@ -238,7 +228,11 @@ void setup() {
   pinMode(dispenseButton, OUTPUT);
   pinMode(loadedInput, INPUT_PULLUP);
 
+  buttonTrigger.begin(buttonPin);
+  coinTrigger.begin(coinPin);
+
   scheduler.addTask(readInputTask);
+  scheduler.addTask(readDistanceTask);
   scheduler.addTask(stageRouterTask);
   scheduler.addTask(monitorTask);
 
@@ -286,6 +280,7 @@ void setup() {
   );
 
   readInputTask.enable();
+  readDistanceTask.enable();
   stageRouterTask.enable();
   monitorTask.enable();
 
