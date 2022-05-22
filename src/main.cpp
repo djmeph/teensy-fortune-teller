@@ -255,11 +255,15 @@ void setup() {
   approach.maxDistance = doc["maxDistance"].as<int>();
   gain.animatronics = doc["animatronicsGain"].as<float>();
   gain.speaker = doc["speakerGain"].as<float>();
+  gain.volume = doc["volume"].as<float>();
   credits.price = doc["creditsToPlay"].as<int>();
   outPause.time = doc["outPauseTime"].as<unsigned int>();
   pitchPause.time = doc["pitchPauseTime"].as<unsigned int>();
 
   int clearMemory = doc["clearMemory"].as<boolean>();
+
+  sgtl5000.enable();
+  sgtl5000.volume(gain.volume);
   AudioMemory(512);
 
   amp0.gain(gain.speaker);
@@ -268,6 +272,7 @@ void setup() {
   if (clearMemory) clearMemoryTask();
 
   Serial.printf("Max user distance before pitch starts: %ucm \n", approach.maxDistance);
+  Serial.printf("Volume: %0.2f\n", gain.volume);
   Serial.printf("Animatronics Gain: %0.2f\n", gain.animatronics);
   Serial.printf("Speaker Gain: %0.2f\n", gain.speaker);
   Serial.printf("Cost to play: %u\n", credits.price);

@@ -59,6 +59,7 @@ struct count_t {
 struct gains_t {
   float animatronics;
   float speaker;
+  float volume;
 };
 
 struct pause_t {
@@ -101,7 +102,7 @@ enum OutOfCardsState { OUT_INACTIVE, OUT_PLAY_SCRIPT, OUT_PAUSE, OUT_FINISHED };
 enum PitchPlayer { PITCH_READY, PITCH_PLAYING, PITCH_PAUSED };
 
 Scheduler scheduler;
-Task readInputTask(10, TASK_FOREVER, &readInput);
+Task readInputTask(1, TASK_FOREVER, &readInput);
 Task stageRouterTask(100, TASK_FOREVER, &stageRouter);
 Task monitorTask(500, TASK_FOREVER, &monitor);
 Stage stage = PITCH;
@@ -111,16 +112,16 @@ OutOfCardsState outOfCardsState = OUT_INACTIVE;
 PitchPlayer pitchPlayer = PITCH_READY;
 
 // GUItool: begin automatically generated code
-AudioPlaySdWav           playWav;     //xy=864,427
-AudioAmplifier           amp0;           //xy=1081,400
-AudioAmplifier           amp1;           //xy=1084,440
-AudioOutputPT8211        dac;          //xy=1277,417
+AudioPlaySdWav           playWav;     //xy=212,318
+AudioAmplifier           amp0;           //xy=449,198
+AudioAmplifier           amp1;           //xy=479,286
+AudioOutputI2S           dac;           //xy=704,223
 AudioConnection          patchCord1(playWav, 0, amp0, 0);
 AudioConnection          patchCord2(playWav, 1, amp1, 0);
 AudioConnection          patchCord3(amp0, 0, dac, 0);
 AudioConnection          patchCord4(amp1, 0, dac, 1);
+AudioControlSGTL5000     sgtl5000;     //xy=444,327
 // GUItool: end automatically generated code
-
 
 void readConfig() {
   if (SD.exists(configFileName)) {
