@@ -111,16 +111,25 @@ Button coinTrigger;
 Button buttonTrigger;
 
 // GUItool: begin automatically generated code
-AudioPlaySdWav           playWav;     //xy=212,318
-AudioAmplifier           amp0;           //xy=449,198
-AudioAmplifier           amp1;           //xy=479,286
-AudioOutputI2S           dac;           //xy=704,223
+AudioPlaySdWav           playWav;        //xy=261,297
+AudioAmplifier           amp0;           //xy=516,253
+AudioAmplifier           amp1;           //xy=499,304
+AudioAmplifier           amp2;           //xy=511,353
+AudioAmplifier           amp3;           //xy=548,408
+AudioOutputMQS           mqs;           //xy=773,263
+AudioOutputI2S           i2s;           //xy=805,373
 AudioConnection          patchCord1(playWav, 0, amp0, 0);
-AudioConnection          patchCord2(playWav, 1, amp1, 0);
-AudioConnection          patchCord3(amp0, 0, dac, 0);
-AudioConnection          patchCord4(amp1, 0, dac, 1);
-AudioControlSGTL5000     sgtl5000;     //xy=444,327
+AudioConnection          patchCord2(playWav, 0, amp2, 0);
+AudioConnection          patchCord3(playWav, 1, amp1, 0);
+AudioConnection          patchCord4(playWav, 1, amp3, 0);
+AudioConnection          patchCord5(amp1, 0, mqs, 1);
+AudioConnection          patchCord6(amp2, 0, i2s, 0);
+AudioConnection          patchCord7(amp0, 0, mqs, 0);
+AudioConnection          patchCord8(amp3, 0, i2s, 1);
+AudioControlSGTL5000     sgtl5000;     //xy=761,479
 // GUItool: end automatically generated code
+
+
 
 void readConfig() {
   if (SD.exists(configFileName)) {

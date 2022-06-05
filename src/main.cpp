@@ -216,7 +216,7 @@ void outOfCardsRead() {
 
 void setup() {
   Serial.begin(9600);
-  // while (!Serial) continue;
+  while (!Serial) continue;
 
   pinMode(led, OUTPUT);
   pinMode(buttonLed, OUTPUT);
@@ -260,8 +260,10 @@ void setup() {
   sgtl5000.volume(gain.volume);
   AudioMemory(512);
 
-  amp0.gain(gain.speaker);
+  amp0.gain(gain.animatronics);
   amp1.gain(gain.animatronics);
+  amp2.gain(gain.speaker);
+  amp3.gain(gain.speaker);
 
   if (clearMemory) clearMemoryTask();
 
