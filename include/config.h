@@ -8,15 +8,15 @@
 #include <TaskScheduler.h>
 #include <EEPROMAnything.h>
 #include <Entropy.h>
-#include <button.h>
+#include <Bounce.h>
 
 #define echoPin 35
 #define trigPin 37
 #define led 13 // Built-in LED
 #define buttonLed 33
-#define buttonPin 24
-#define coinPin 10
-#define loadedInput 14
+#define buttonPin 26
+#define coinPin 28
+#define loadedPin 14
 #define dispenseButton 15
 #define configFileName "CONFJSON.TXT"
 
@@ -71,6 +71,7 @@ static pause_t outPause;
 static pause_t pitchPause;
 
 static bool buttonPress;
+static bool firstCoinRead = true;
 
 void userDistance();
 void monitor();
@@ -99,37 +100,35 @@ enum PitchPlayer { PITCH_READY, PITCH_PLAYING, PITCH_PAUSED };
 
 Scheduler scheduler;
 Task readInputTask(1, TASK_FOREVER, &readInput);
-Task readDistanceTask(10, TASK_FOREVER, &readDistance);
+Task readDistanceTask(1000, TASK_FOREVER, &readDistance);
 Task stageRouterTask(100, TASK_FOREVER, &stageRouter);
-Task monitorTask(500, TASK_FOREVER, &monitor);
 Stage stage = PITCH;
 CtaState ctaState = CTA_INACTIVE;
 DispenseState dispenseState = DISPENSE_INACTIVE;
 OutOfCardsState outOfCardsState = OUT_INACTIVE;
 PitchPlayer pitchPlayer = PITCH_READY;
-Button coinTrigger;
-Button buttonTrigger;
+Bounce coinTrigger = Bounce(coinPin, 10);
+Bounce buttonTrigger = Bounce(buttonPin, 10);
+Bounce loadedTrigger = Bounce(loadedPin, 10);
+
 
 // GUItool: begin automatically generated code
 AudioPlaySdWav           playWav;        //xy=261,297
-AudioAmplifier           amp0;           //xy=516,253
 AudioAmplifier           amp1;           //xy=499,304
 AudioAmplifier           amp2;           //xy=511,353
+AudioAmplifier           amp0;           //xy=516,253
 AudioAmplifier           amp3;           //xy=548,408
 AudioOutputMQS           mqs;           //xy=773,263
-AudioOutputI2S           i2s;           //xy=805,373
+AudioOutputPT8211        pt8211_1;       //xy=810,354
 AudioConnection          patchCord1(playWav, 0, amp0, 0);
 AudioConnection          patchCord2(playWav, 0, amp2, 0);
 AudioConnection          patchCord3(playWav, 1, amp1, 0);
 AudioConnection          patchCord4(playWav, 1, amp3, 0);
 AudioConnection          patchCord5(amp1, 0, mqs, 1);
-AudioConnection          patchCord6(amp2, 0, i2s, 0);
+AudioConnection          patchCord6(amp2, 0, pt8211_1, 0);
 AudioConnection          patchCord7(amp0, 0, mqs, 0);
-AudioConnection          patchCord8(amp3, 0, i2s, 1);
-AudioControlSGTL5000     sgtl5000;     //xy=761,479
+AudioConnection          patchCord8(amp3, 0, pt8211_1, 1);
 // GUItool: end automatically generated code
-
-
 
 void readConfig() {
   if (SD.exists(configFileName)) {
@@ -184,11 +183,12 @@ void clearMemoryTask() {
 }
 
 void readInput() {
-  outOfCardsRead();
   readCoin();
   readButton();
+  outOfCardsRead();
 }
 
 void readDistance() {
   userDistance();
+  monitor();
 }

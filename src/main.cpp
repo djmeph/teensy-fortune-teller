@@ -45,6 +45,7 @@ void cta() {
       if (buttonPress) {
         digitalWrite(buttonLed, LOW);
         ctaState = CTA_INACTIVE;
+        dispenseState = DISPENSE_INACTIVE;
         buttonPress = false;
         stage = DISPENSE;
       }
@@ -82,6 +83,7 @@ void dispense() {
       if (millis() - dispenser.timer >= (10 * 1000)) {
         stop();
         dispenseState = DISPENSE_INACTIVE;
+        pitchPlayer = PITCH_READY;
         Serial.println("Game Over");
         stage = PITCH;
       }
@@ -151,14 +153,18 @@ void userDistance() {
 }
 
 void readButton() {
-  if (buttonTrigger.debounce()) {
+  if (buttonTrigger.update() && buttonTrigger.fallingEdge()) {
     Serial.println("Button Pushed");
     buttonPress = true;
   }
 }
 
 void readCoin() {
-  if (coinTrigger.debounce()) {
+  if (coinTrigger.update() && coinTrigger.risingEdge()) {
+    if (firstCoinRead) {
+      firstCoinRead = false;
+      return;
+    }
     credits.unused++;
     credits.total++;
     Serial.printf(
@@ -170,9 +176,7 @@ void readCoin() {
 }
 
 void monitor() {
-  if (approach.distance <= approach.maxDistance) {
-    Serial.printf("Distance: %d cm\n", approach.distance);
-  }
+  Serial.printf("Distance: %d cm\n", approach.distance);
   if (playWav.isPlaying()) {
     Serial.printf("Elapsed milliseconds: %d\n", playWav.positionMillis());
   }
@@ -197,26 +201,20 @@ void errorBlink() {
 }
 
 void outOfCardsRead() {
-  int reading = digitalRead(loadedInput);
-  if (reading != dispenser.loaded.lastState) dispenser.loaded.lastDebounceTime = millis();
-
-  if ((millis() - dispenser.loaded.lastDebounceTime) > dispenser.loaded.debounceDelay) {
-    if (reading != dispenser.loaded.state) {
-      dispenser.loaded.state = reading;
-      stage = dispenser.loaded.state ? PITCH : OUT_OF_CARDS;
-      if (dispenser.loaded.state) {
-        stop();
-        outOfCardsState = OUT_INACTIVE;
-      }
+  if (loadedTrigger.update()) {
+    dispenser.loaded.state = loadedTrigger.risingEdge();
+    stage = dispenser.loaded.state ? PITCH : OUT_OF_CARDS;
+    if (dispenser.loaded.state) {
+      stop();
     }
+    outOfCardsState = OUT_INACTIVE;
   }
-
-  dispenser.loaded.lastState = reading;
 }
 
 void setup() {
   Serial.begin(9600);
-  while (!Serial) continue;
+  // while (!Serial) continue;
+  delay(10000);
 
   pinMode(led, OUTPUT);
   pinMode(buttonLed, OUTPUT);
@@ -226,15 +224,11 @@ void setup() {
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
   pinMode(dispenseButton, OUTPUT);
-  pinMode(loadedInput, INPUT_PULLUP);
-
-  buttonTrigger.begin(buttonPin);
-  coinTrigger.begin(coinPin);
+  pinMode(loadedPin, INPUT_PULLUP);
 
   scheduler.addTask(readInputTask);
   scheduler.addTask(readDistanceTask);
   scheduler.addTask(stageRouterTask);
-  scheduler.addTask(monitorTask);
 
   if (!SD.begin(BUILTIN_SDCARD)) {
     Serial.println("initialization failed!");
@@ -256,8 +250,6 @@ void setup() {
 
   int clearMemory = doc["clearMemory"].as<boolean>();
 
-  sgtl5000.enable();
-  sgtl5000.volume(gain.volume);
   AudioMemory(512);
 
   amp0.gain(gain.animatronics);
@@ -284,7 +276,6 @@ void setup() {
   readInputTask.enable();
   readDistanceTask.enable();
   stageRouterTask.enable();
-  monitorTask.enable();
 
   Entropy.Initialize();
 
